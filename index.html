@@ -334,6 +334,7 @@ let netRole = null;                 // null | 'host' | 'guest'
 let room = null, sendInput = null, sendState = null;
 let netGuestInput = { left:false,right:false,jump:false,down:false,dash:false,special:false };
 let guestScene = 'start';           // guest mirrors host's scene
+let netConnected = false;
 
 /* ---- player upgrade levels (persist across matches in one session) ----
    To keep saves between visits when you host this yourself, read/write
@@ -1283,13 +1284,15 @@ function genCode(){
   return s;
 }
 function startOnline(asHost, code){
-  if(!window._trysteroJoin){ netStatus('Networking still loading — wait a moment and retry.'); return; }
-  if(!code || code.length<4){ netStatus('Enter the 4-letter code first.'); return; }
+  if(!window._trysteroJoin){ netStatus('Networking still loading — wait a few seconds and retry.'); return; }
+  code = (code||'').toUpperCase();
+  if(code.length<4){ netStatus('Type the 4-letter code first.'); return; }
   netRole = asHost ? 'host' : 'guest';
   mode = 'online';
+  netConnected = false;
   try{
-    room = window._trysteroJoin({ appId:'slime-soccer-leofattal-v1' }, code.toUpperCase());
-  }catch(e){ netStatus('Could not start networking.'); return; }
+    room = window._trysteroJoin({ appId:'slime-soccer-leofattal-v1' }, code);
+  }catch(e){ netStatus('Could not start networking: ' + e.message); return; }
 
   const [si, gi] = room.makeAction('inp');
   const [ss, gs] = room.makeAction('st');
@@ -1301,15 +1304,24 @@ function startOnline(asHost, code){
   // settable property in others — bind in whichever way this version uses.
   const bind = (name, fn)=>{ if(typeof room[name]==='function') room[name](fn); else room[name]=fn; };
   bind('onPeerJoin', id => {
-    netStatus('Connected!');
+    netConnected = true;
+    netStatus('Connected! Starting…');
     if(asHost) beginOnlineMatch();
     else $('startScreen').classList.add('hidden');   // guest waits for first snapshot
   });
   bind('onPeerLeave', id => { netStatus('Other player left.'); toMenu(); });
 
   netStatus(asHost
-    ? `Your code: ${code}  —  share it, waiting for a player…`
-    : 'Connecting…');
+    ? `Your code is  ${code}  — share it. Waiting for a player…`
+    : `Joining ${code}…`);
+
+  // if nobody connects in 15s, explain why
+  setTimeout(()=>{
+    if(netConnected || !room) return;
+    netStatus(asHost
+      ? `Still waiting. Your friend must choose Online, type ${code}, and tap JOIN.`
+      : `No game found for ${code}. Make sure your friend tapped HOST first and you typed the exact code. (Some school/strict wifi can block the connection.)`);
+  }, 15000);
 }
 function beginOnlineMatch(){
   player = makeSlime(W*0.25, getCSS('--p1'), getCSS('--p1-rim'), true);
@@ -1362,6 +1374,7 @@ function showOnlineResult(){
 }
 $('hostBtn').onclick = ()=>{ const code = genCode(); $('joinCode').value = code; startOnline(true, code); };
 $('joinBtn').onclick = ()=>{ startOnline(false, ($('joinCode').value||'').trim()); };
+$('joinCode').addEventListener('input', e=>{ e.target.value = e.target.value.toUpperCase(); });
 
 /* ======================================================================
    MAIN LOOP  —  fixed timestep with accumulator
