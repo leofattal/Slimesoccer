@@ -118,7 +118,7 @@
   .seg button.active{background:var(--p1);color:#0c0719}
   #diffWrap.dim{opacity:.35;pointer-events:none}
   .online-join{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:10px}
-  #joinCode{width:120px;text-transform:uppercase;text-align:center;letter-spacing:4px;
+  #joinCode{width:150px;text-transform:uppercase;text-align:center;letter-spacing:3px;
     font-family:var(--display);font-size:20px;padding:11px;border-radius:9px;border:none;
     background:#160e2c;color:#fff;outline:none}
   #netStatus{margin-top:10px;min-height:1.3em;color:var(--gold)}
@@ -455,11 +455,15 @@ const TRACK = new Set([
   'KeyA','KeyD','KeyW','KeyS','ShiftLeft','Space','KeyX','KeyF','KeyE'
 ]);
 addEventListener('keydown', e=>{
+  const t = e.target;
+  if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA')) return;   // don't hijack typing in text fields
   if(e.code==='Backquote'){ toggleConsole(); e.preventDefault(); return; }
   if(consoleOpen) return;                       // let the console input field handle keys
   if(TRACK.has(e.code)){ raw[e.code]=true;  e.preventDefault(); }
 });
 addEventListener('keyup',   e=>{
+  const t = e.target;
+  if(t && (t.tagName==='INPUT' || t.tagName==='TEXTAREA')) return;
   if(consoleOpen) return;
   if(TRACK.has(e.code)){ raw[e.code]=false; e.preventDefault(); }
 });
