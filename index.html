@@ -1294,22 +1294,20 @@ function startOnline(asHost, code){
     room = window._trysteroJoin({ appId:'slime-soccer-leofattal-v1' }, code);
   }catch(e){ netStatus('Could not start networking: ' + e.message); return; }
 
-  const [si, gi] = room.makeAction('inp');
-  const [ss, gs] = room.makeAction('st');
-  sendInput = si; sendState = ss;
-  gi(d => { netGuestInput = d; });          // host: receive guest's buttons
-  gs(d => { applySnapshot(d); });           // guest: receive host's world state
+  const inpAction = room.makeAction('inp');
+  const stAction  = room.makeAction('st');
+  sendInput = d => inpAction.send(d);
+  sendState = d => stAction.send(d);
+  inpAction.onMessage = d => { netGuestInput = d; };   // host: receive guest's buttons
+  stAction.onMessage  = d => { applySnapshot(d); };     // guest: receive host's world state
 
-  // onPeerJoin/onPeerLeave are a method in some Trystero versions and a
-  // settable property in others — bind in whichever way this version uses.
-  const bind = (name, fn)=>{ if(typeof room[name]==='function') room[name](fn); else room[name]=fn; };
-  bind('onPeerJoin', id => {
+  room.onPeerJoin = id => {
     netConnected = true;
     netStatus('Connected! Starting…');
     if(asHost) beginOnlineMatch();
-    else $('startScreen').classList.add('hidden');   // guest waits for first snapshot
-  });
-  bind('onPeerLeave', id => { netStatus('Other player left.'); toMenu(); });
+    else $('startScreen').classList.add('hidden');      // guest waits for first snapshot
+  };
+  room.onPeerLeave = id => { netStatus('Other player left.'); toMenu(); };
 
   netStatus(asHost
     ? `Your code is  ${code}  — share it. Waiting for a player…`
